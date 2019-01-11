@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 from PyQt5.QtCore import *
 from openpyxl import load_workbook
-from openpyxl.utils import get_column_letter
 
 
 #=====================对象创建，按钮链接======================
@@ -16,6 +15,7 @@ class mywindow(QtWidgets.QWidget,Ui_Dialog):
         self.pushButton.clicked.connect(self.openfile)
         self.pushButton.clicked.connect(self.creat_table_show)
         self.lineEdit.textChanged.connect(self.text_changed)
+        self.lineEdit.returnPressed.connect(self.number_find)
         self.pushButton_2.clicked.connect(self.name_find)
         self.pushButton_3.clicked.connect(self.number_find)
         self.pushButton_4.clicked.connect(self.creat_table_show)
@@ -31,20 +31,21 @@ class mywindow(QtWidgets.QWidget,Ui_Dialog):
         self.comboBox.currentIndexChanged.connect(self.selectionchange)
         self.comboBox_2.currentIndexChanged.connect(self.selectionchange_0)
 
-#===============打开文件并获取路径===========================
+
+    #===============打开文件并获取路径===========================
     def openfile(self):
 
         openfile_name =QFileDialog.getOpenFileName(self,
-                                                        "选取文件",
-                                                        "c:/ ",
-                                                        "All Files(*);;Excel files( *.xlsx)"
-                                                        )
+                                                   "选取文件",
+                                                   "c:/ ",
+                                                   "All Files(*);;Excel files( *.xlsx)"
+                                                   )
 
 
         global path_openfile_name
         path_openfile_name = openfile_name[0]
 
-#================读取eccel文件并显示==========================
+    #================读取eccel文件并显示==========================
     def creat_table_show(self):
         if len(path_openfile_name) > 0:
             input_table = pd.read_excel(path_openfile_name)
@@ -69,7 +70,7 @@ class mywindow(QtWidgets.QWidget,Ui_Dialog):
                     newItem = QTableWidgetItem(input_table_items)
                     newItem.setTextAlignment(Qt.AlignHCenter|Qt.AlignVCenter)
                     self.tableWidget.setItem(i, j, newItem)
-#修饰表格
+            #修饰表格
             self.tableWidget.verticalHeader().setVisible(False)
 
             M =0
@@ -77,13 +78,14 @@ class mywindow(QtWidgets.QWidget,Ui_Dialog):
             for M in range(input_table_rows):
                 for N in range(input_table_colunms):
                     if 'nan' == self.tableWidget.item(M,N).text():
-                        self.tableWidget.setItem(M,N,QTableWidgetItem(0))
+                        self.tableWidget.setItem(M,N,QTableWidgetItem(str(0)))
+                        print()
                     else:
                         self.tableWidget.setItem(M,N,QTableWidgetItem(str(self.tableWidget.item(M,N).text())))
         else:
-            self.centralWidget.show()
+            self.label_2.setText("请选择正确的文件")#标签
 
-#====================对table表中的内容修改====================
+    #====================对table表中的内容修改====================
     def table_insert(self):
         row = self.tableWidget.rowCount()
         self.tableWidget.insertRow(row)
@@ -111,7 +113,7 @@ class mywindow(QtWidgets.QWidget,Ui_Dialog):
         row = row_select[0].row()
         self.table.removeRow(row)
 
-#===============导出Table表中的数据。并保存在Excel中======================
+    #===============导出Table表中的数据。并保存在Excel中======================
     def save_table(self):
         rows = self.tableWidget.rowCount()
         columns=self.tableWidget.columnCount()
@@ -152,135 +154,125 @@ class mywindow(QtWidgets.QWidget,Ui_Dialog):
                 I += 2
             wb.save(path_openfile_name)
 
-#===============按学号检索====================
+    #===============按学号检索====================
     def number_find(self):
-        rows = self.tableWidget.rowCount()
-        columns=self.tableWidget.columnCount()
-        self.key_number=self.finish_number
-        key_number_find =[]
-        wb = load_workbook(path_openfile_name)
-        ws = wb.active
-        try:
-            for rows_index in range(rows):
-                for columns_index in range (columns):
-                    sheet_number = ws.cell(row = rows_index+2, column = columns_index+1).value
-                    if self.key_number == sheet_number:
-                       key_number_find.append(rows_index+2)
-                       key_number_find.append(columns_index+1)
-                    else:
-                        pass
-        except : pass
-#收集对应学号在excel中的位置
+        if len(path_openfile_name) > 0:
+            input_table = pd.read_excel(path_openfile_name)
+            input_table_header = input_table.columns.values.tolist()   #获取头部目录
+            rows  = input_table.shape[0]   #获取行数
+            columns=self.tableWidget.columnCount()
+            self.key_number=self.finish_number
+            key_number_find =[]
+            wb = load_workbook(path_openfile_name)
+            ws = wb.active
+            try:
+                for rows_index in range(rows):
+                    for columns_index in range (columns):
+                        sheet_number = ws.cell(row = rows_index+2, column = columns_index+1).value
+                        if self.key_number == sheet_number:
+                            key_number_find.append(rows_index+2)
+                            key_number_find.append(columns_index+1)
+                        else:
+                            pass
+            except : pass
+        #收集对应学号在excel中的位置
+            self.tableWidget.setColumnCount(columns)
+            length=int(len(key_number_find)/2)
+            self.tableWidget.setRowCount(length)
+            self.label_2.setText("有"+str(length)+"条结果")#标签
+            self.tableWidget.setHorizontalHeaderLabels(input_table_header)
 
-        input_table = pd.read_excel(path_openfile_name)
-        input_table_header = input_table.columns.values.tolist()   #获取头部目录
-        self.tableWidget.setColumnCount(columns)
-        length=int(len(key_number_find)/2)
-        self.label_2.setText("有"+str(length)+"条结果")#标签
-        self.tableWidget.setRowCount(length)
-        self.tableWidget.setHorizontalHeaderLabels(input_table_header)
-        I = 0
-        length_0 = length*2
-        while I <length_0:
-            length_1 = length_0 -I
-            Q = 2
-            while Q < length_1:
-                if key_number_find[I] == key_number_find[Q+I]:
-                    key_number_find[Q+I] = 'NO'
-                    key_number_find[Q+I+1] = 'NO'
-                    Q+=2
-                else: Q+=2
-            I+=2
+        #提炼出位置
+            I = 0
+            M = 0
+            Q = len(key_number_find)
+            while I< (int(Q)):
+                N = 0
+                for columns_index_0 in range (columns):
+                    new_items= ws.cell(row = key_number_find[I], column = columns_index_0+1).value
+                    self.tableWidget.setItem(M,N,QTableWidgetItem(str(new_items)))
+                    N+=1
+                I+=2
+                M+=1
 
-        while 'NO' in key_number_find:
-            key_number_find.remove('NO')
-#提炼出位置
-        I = 0
-        M = 0
-        Q = len(key_number_find)
-        while I< (int(Q)):
-            N = 0
-            for columns_index_0 in range (columns):
-                new_items= ws.cell(row = key_number_find[I], column = columns_index_0+1).value
-                self.tableWidget.setItem(M,N,QTableWidgetItem(str(new_items)))
-                N+=1
-            I+=2
-            M+=1
+            self.use_key = []
+            self.use_key = key_number_find
+        else:pass
 
-        self.use_key = []
-        self.use_key = key_number_find
 
-#==============按老师检索===================
+    #==============按老师检索===================
     def name_find(self):
-        rows =self.tableWidget.rowCount()
-        columns =self.tableWidget.columnCount()
-        self.key_name1 =self.teacher_name
-        self.key_name2 =self.test_name
-        key_name1_find =[]
-        key_name2_find =[]
-        key_name_find =[]
-        wb = load_workbook(path_openfile_name)
-        ws = wb.active
-        try:
-            for rows_index in range(rows):
-                for columns_index in range (columns):
-                    sheet_name1 = ws.cell(row = rows_index+2, column = columns_index+1).value
-                    if self.key_name1 == sheet_name1:
-                        key_name1_find.append(rows_index+2)
-                        key_name1_find.append(columns_index+1)
+        if len(path_openfile_name) > 0:
+            input_table = pd.read_excel(path_openfile_name)
+            input_table_header = input_table.columns.values.tolist()   #获取头部目录
+            rows = input_table.shape[0]   #获取行数
+            columns =self.tableWidget.columnCount()
+            self.key_name1 =self.teacher_name
+            self.key_name2 =self.test_name
+            key_name1_find =[]
+            key_name2_find =[]
+            key_name_find =[]
+            wb = load_workbook(path_openfile_name)
+            ws = wb.active
+            try:
+                for rows_index in range(rows):
+                    for columns_index in range (columns):
+                        sheet_name1 = ws.cell(row = rows_index+2, column = columns_index+1).value
+                        if self.key_name1 == sheet_name1:
+                            key_name1_find.append(rows_index+2)
+                            key_name1_find.append(columns_index+1)
+                        else:
+                            pass
+            except : pass
+        #收集老师名字在excek中的位置
+            try:
+                for rows_index in range(rows):
+                    for columns_index in range (columns):
+                        sheet_name2 = ws.cell(row = rows_index+2, column = columns_index+1).value
+                        if self.key_name2 == sheet_name2:
+                            key_name2_find.append(rows_index+2)
+                            key_name2_find.append(columns_index+1)
+                        else:
+                            pass
+            except : pass
+        #收集对应实验在excel中的位置
+            I = 0
+            Q_0 = int(len((key_name1_find)))
+            Q_1 = int(len(key_name2_find))
+            while I < Q_0:
+                P = 0
+                while P < Q_1:
+                    if key_name1_find[I] == key_name2_find[P]:
+                        key_name_find.append(key_name1_find[I])
+                        key_name_find.append(key_name1_find[I+1])
+                        P+=2
                     else:
-                        pass
-        except : pass
-#收集老师名字在excek中的位置
-        try:
-            for rows_index in range(rows):
-                for columns_index in range (columns):
-                    sheet_name2 = ws.cell(row = rows_index+2, column = columns_index+1).value
-                    if self.key_name2 == sheet_name2:
-                        key_name2_find.append(rows_index+2)
-                        key_name2_find.append(columns_index+1)
-                    else:
-                        pass
-        except : pass
-#收集对应实验在excel中的位置
-        I = 0
-        if int(len(key_name1_find))>= int(len(key_name2_find)):
-            Q = int(len(key_name1_find))
-        else:
-            Q = int(len(key_name2_find))
-        while I < Q:
-            P = 2
-            while P < Q -I:
-                if key_name1_find[I] == key_name2_find[I+P]:
-                    key_name_find.append(key_name1_find[I])
-                    key_name_find.append(key_name1_find[I+1])
-                P+=2
-            I+=2
+                        P+=2
+                I+=2
+            self.tableWidget.setColumnCount(columns)
+            length=int(len(key_name_find)/2)
+            self.label_2.setText("有"+str(length)+"条结果")#标签
+            self.tableWidget.setRowCount(length)
+            self.tableWidget.setHorizontalHeaderLabels(input_table_header)
 
-        input_table = pd.read_excel(path_openfile_name)
-        input_table_header = input_table.columns.values.tolist()   #获取头部目录
-        self.tableWidget.setColumnCount(columns)
-        length=int(len(key_name_find)/2)
-        self.label_2.setText("有"+str(length)+"条结果")#标签
-        self.tableWidget.setRowCount(length)
-        self.tableWidget.setHorizontalHeaderLabels(input_table_header)
+            I = 0
+            M = 0
+            Q = len(key_name_find)
+            while I< (int(Q)):
+                N = 0
+                for columns_index_0 in range (columns):
+                    new_items = ws.cell(row = key_name_find[I], column = columns_index_0+1).value
+                    self.tableWidget.setItem(M,N,QTableWidgetItem(new_items))
+                    N+=1
+                I+=2
+                M+=1
 
-        I = 0
-        M = 0
-        Q = len(key_name_find)
-        while I< (int(Q)):
-            N = 0
-            for columns_index_0 in range (columns):
-                new_items= ws.cell(row = key_name_find[I], column = columns_index_0+1).value
-                self.tableWidget.setItem(M,N,QTableWidgetItem(new_items))
-                N+=1
-            I+=2
-            M+=1
+            self.use_key_0 = []
+            self.use_key_0 = key_name_find
 
-        self.use_key_0 = []
-        self.use_key_0 = key_name_find
+        else:pass
 
- #===============获取需要检索的学号和教师名字=============
+    #===============获取需要检索的学号和教师名字=============
     def text_changed(self,text):
         number=[]
         number.append(self.lineEdit.text())
@@ -291,9 +283,23 @@ class mywindow(QtWidgets.QWidget,Ui_Dialog):
     def selectionchange_0(self):
         self.test_name=self.comboBox_2.currentText()
 
-#====================显示无成绩人员===================
+
+    #===============获取需要检索的学号和教师名字=============
+    def text_changed(self,text):
+        number=[]
+        number.append(self.lineEdit.text())
+        self.finish_number=number[-1]
+
+    def selectionchange(self):
+        self.teacher_name=self.comboBox.currentText()
+    def selectionchange_0(self):
+        self.test_name=self.comboBox_2.currentText()
+
+    #====================显示无成绩人员===================
     def no_grates(self):
-        rows = self.tableWidget.rowCount()
+        input_table = pd.read_excel(path_openfile_name)
+        input_table_header = input_table.columns.values.tolist()   #获取头部目录
+        rows = input_table.shape[0]
         columns=self.tableWidget.columnCount()
         key_nogrates_find =[]
         wb = load_workbook(path_openfile_name)
@@ -302,34 +308,15 @@ class mywindow(QtWidgets.QWidget,Ui_Dialog):
             for rows_index in range(rows):
                 for columns_index in range (columns):
                     sheet_number = ws.cell(row = rows_index+2, column = columns_index+1).value
-                    if '' == sheet_number or '0'== sheet_number:
+                    if None==sheet_number or '0' == sheet_number :
                         key_nogrates_find.append(rows_index+2)
                         key_nogrates_find.append(columns_index+1)
                     else:
                         pass
         except : pass
-#收集没有成绩的在excel中的位置
+        #收集没有成绩的在excel中的位置
 
         length=int(len(key_nogrates_find)/2)
-        I = 0
-        length_0 = length*2
-        while I <length_0:
-            length_1 = length_0 -I
-            Q = 2
-            while Q < length_1:
-                if key_nogrates_find[I] == key_nogrates_find[Q+I]:
-                    key_nogrates_find[Q+I] = 'NO'
-                    key_nogrates_find[Q+I+1] = 'NO'
-                    Q+=2
-                else: Q+=2
-            I+=2
-
-        while 'NO' in key_nogrates_find:
-            key_nogrates_find.remove('NO')
-#提炼出位置
-        length=int(len(key_nogrates_find)/2)
-        input_table = pd.read_excel(path_openfile_name)
-        input_table_header = input_table.columns.values.tolist()   #获取头部目录
         self.tableWidget.setColumnCount(columns)
         self.tableWidget.setRowCount(length)
         self.label_2.setText("有"+str(length)+"条结果")#标签
@@ -343,6 +330,7 @@ class mywindow(QtWidgets.QWidget,Ui_Dialog):
                 new_items= ws.cell(row = key_nogrates_find[I], column = columns_index_0+1).value
                 self.tableWidget.setItem(M,N,QTableWidgetItem(new_items))
                 N+=1
+
             I+=2
             M+=1
 
